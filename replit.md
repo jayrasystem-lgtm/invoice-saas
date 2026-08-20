@@ -1,9 +1,10 @@
-# [Project name]
+# Node.js Starter
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Project Node.js kosong sebagai titik awal pengembangan aplikasi.
 
 ## Run & Operate
 
+- `pnpm start` — menjalankan entry point Node.js
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
