@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Kelola Klien</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EFE8D6; --surface:#FBF8F0; --ink:#20281F; --muted:#8C8474; --line:#E3DAC3;
+    --accent:#C24A2C; --accent-dark:#A83E23; --mint:#DCE7DD; --mint-ink:#3C5A48;
+    --peach:#F3DBC9; --peach-ink:#8A4A28; --danger:#B3261E; --font:'Plus Jakarta Sans',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); padding:32px 20px 60px;}
+  .wrap{max-width:880px; margin:0 auto;}
+  h1{font-size:24px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13.5px; margin-bottom:26px;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px; margin-bottom:20px;}
+  .card h2{font-size:15px; margin:0 0 14px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  input{
+    font-family:var(--font); font-size:14px; padding:11px 13px; border:1.5px solid var(--line); border-radius:9px;
+    background:var(--bg); color:var(--ink); flex:1; min-width:140px;
+  }
+  input:focus{outline:none; border-color:var(--ink);}
+  button{
+    font-family:var(--font); font-weight:700; font-size:13.5px; padding:11px 18px; border-radius:9px; border:none;
+    background:var(--accent); color:#fff; cursor:pointer;
+  }
+  button:hover{background:var(--accent-dark);}
+  button.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line);}
+  button.danger{background:transparent; color:var(--danger); border:1.5px solid #ecd2cf;}
+  button.sm{padding:6px 12px; font-size:12px;}
+  table{width:100%; border-collapse:collapse; margin-top:8px;}
+  th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding:8px 10px; border-bottom:1.5px solid var(--ink);}
+  td{padding:10px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle;}
+  .badge{display:inline-block; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:800; text-transform:uppercase;}
+  .badge.active{background:var(--mint); color:var(--mint-ink);}
+  .badge.suspended{background:var(--peach); color:var(--peach-ink);}
+  .badge.expired{background:#F3DBC9; color:var(--danger);}
+  .key{font-family:monospace; font-weight:700; letter-spacing:.03em; cursor:pointer;}
+  .actions{display:flex; gap:6px; flex-wrap:wrap;}
+  .login-box{max-width:340px; margin:80px auto; text-align:center;}
+  .msg{font-size:12.5px; margin-top:8px;}
+  .msg.err{color:var(--danger);}
+  .msg.ok{color:var(--mint-ink);}
+  .date-input{max-width:150px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+let ADMIN_PASSWORD = localStorage.getItem('adminPassword') || '';
+let tenants = [];
+
+async function api(path, options){
+  const res = await fetch(path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ADMIN_PASSWORD, ...(options?.headers||{}) }
+  });
+  if(res.status === 401){ localStorage.removeItem('adminPassword'); ADMIN_PASSWORD=''; renderLogin('Password salah.'); throw new Error('UNAUTHORIZED'); }
+  return res;
+}
+
+function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function statusOf(t){
+  if(t.status === 'suspended') return 'suspended';
+  if(t.paid_until && t.paid_until < todayISO()) return 'expired';
+  return 'active';
+}
+function statusLabel(s){ return {active:'Aktif', suspended:'Dinonaktifkan', expired:'Jatuh Tempo'}[s]; }
+
+async function loadTenants(){
+  const res = await api('/api/admin/tenants');
+  tenants = await res.json();
+  renderDashboard();
+}
+
+async function createTenant(){
+  const name = document.getElementById('newName').value.trim();
+  const paidUntil = document.getElementById('newPaidUntil').value;
+  if(!name){ alert('Nama klien wajib diisi.'); return; }
+  await api('/api/admin/tenants', { method:'POST', body: JSON.stringify({ name, paidUntil: paidUntil || null }) });
+  document.getElementById('newName').value = '';
+  document.getElementById('newPaidUntil').value = '';
+  await loadTenants();
+}
+
+async function toggleStatus(id, current){
+  const next = current === 'active' ? 'suspended' : 'active';
+  await api('/api/admin/tenants/' + id, { method:'PATCH', body: JSON.stringify({ status: next }) });
+  await loadTenants();
+}
+
+async function updatePaidUntil(id, value){
+  await api('/api/admin/tenants/' + id, { method:'PATCH', body: JSON.stringify({ paidUntil: value || null }) });
+  await loadTenants();
+}
+
+async function regenerateKey(id){
+  if(!confirm('Buat license key baru untuk klien ini? Key lama tidak akan berfungsi lagi.')) return;
+  await api('/api/admin/tenants/' + id + '/regenerate-key', { method:'POST' });
+  await loadTenants();
+}
+
+async function deleteTenant(id, name){
+  if(!confirm(`Hapus klien "${name}" beserta seluruh datanya? Tindakan ini tidak bisa dibatalkan.`)) return;
+  await api('/api/admin/tenants/' + id, { method:'DELETE' });
+  await loadTenants();
+}
+
+function copyKey(key){
+  navigator.clipboard?.writeText(key);
+  const el = event.target;
+  const orig = el.textContent;
+  el.textContent = 'Disalin!';
+  setTimeout(()=> el.textContent = orig, 1000);
+}
+
+function renderLogin(err){
+  document.getElementById('root').innerHTML = `
+    <div class="login-box">
+      <h1>Admin</h1>
+      <div class="sub">Masuk untuk mengelola klien</div>
+      <input type="password" id="pwInput" placeholder="Password admin" style="width:100%; margin-bottom:10px;">
+      <button style="width:100%;" id="pwSubmit">Masuk</button>
+      ${err ? `<div class="msg err">${escapeHtml(err)}</div>` : ''}
+    </div>`;
+  const input = document.getElementById('pwInput');
+  input.focus();
+  const submit = async ()=>{
+    ADMIN_PASSWORD = input.value;
+    try{
+      await loadTenants();
+      localStorage.setItem('adminPassword', ADMIN_PASSWORD);
+    }catch(e){ /* renderLogin sudah dipanggil oleh api() saat 401 */ }
+  };
+  document.getElementById('pwSubmit').onclick = submit;
+  input.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
+}
+
+function renderDashboard(){
+  const activeCount = tenants.filter(t=>statusOf(t)==='active').length;
+  document.getElementById('root').innerHTML = `
+    <div class="wrap">
+      <h1>Kelola Klien</h1>
+      <div class="sub">${tenants.length} klien terdaftar · ${activeCount} aktif</div>
+
+      <div class="card">
+        <h2>+ Tambah Klien Baru</h2>
+        <div class="row">
+          <input id="newName" placeholder="Nama usaha klien">
+          <input id="newPaidUntil" type="date" class="date-input" title="Berlaku sampai (opsional, kosongkan jika dikontrol manual)">
+          <button id="btnCreate">Tambah</button>
+        </div>
+        <div class="sub" style="margin:0;">Tanggal "berlaku sampai" opsional — kosongkan kalau Anda mau kontrol aktif/nonaktif secara manual saja.</div>
+      </div>
+
+      <div class="card">
+        <h2>Daftar Klien</h2>
+        ${!tenants.length ? '<div class="sub">Belum ada klien.</div>' : `
+        <table>
+          <thead><tr><th>Nama</th><th>License Key</th><th>Status</th><th>Berlaku Sampai</th><th></th></tr></thead>
+          <tbody>
+            ${tenants.map(t=>{
+              const s = statusOf(t);
+              return `
+              <tr>
+                <td><b>${escapeHtml(t.name)}</b></td>
+                <td><span class="key" title="Klik untuk salin" onclick="copyKey('${t.license_key}')">${t.license_key}</span></td>
+                <td><span class="badge ${s}">${statusLabel(s)}</span></td>
+                <td><input type="date" class="date-input" value="${t.paid_until||''}" onchange="updatePaidUntil('${t.id}', this.value)"></td>
+                <td>
+                  <div class="actions">
+                    <button class="sm ${t.status==='active'?'danger':''}" onclick="toggleStatus('${t.id}','${t.status}')">${t.status==='active'?'Nonaktifkan':'Aktifkan'}</button>
+                    <button class="sm ghost" onclick="regenerateKey('${t.id}')">Ganti Key</button>
+                    <button class="sm danger" onclick="deleteTenant('${t.id}','${escapeHtml(t.name)}')">Hapus</button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    </div>`;
+  document.getElementById('btnCreate').onclick = createTenant;
+}
+
+if(ADMIN_PASSWORD){ loadTenants().catch(()=>{}); } else { renderLogin(); }
+</script>
+</body>
+</html>

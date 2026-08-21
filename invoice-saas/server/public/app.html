@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#EFE8D6;
+    --surface:#FBF8F0;
+    --header-bg:#F7F2E6;
+    --ink:#20281F;
+    --muted:#8C8474;
+    --line:#E3DAC3;
+    --accent:#C24A2C;
+    --accent-dark:#A83E23;
+    --accent-soft:#F3DBC9;
+    --mint:#DCE7DD;
+    --mint-ink:#3C5A48;
+    --peach:#F3DBC9;
+    --peach-ink:#8A4A28;
+    --lav:#E3DEEE;
+    --lav-ink:#544A82;
+    --avatar:#33473F;
+    --danger:#B3261E;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+    --font:'Plus Jakarta Sans',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font); -webkit-font-smoothing:antialiased;}
+  #app{max-width:480px; margin:0 auto; min-height:100vh; background:var(--bg); position:relative; padding-bottom:96px;}
+  @media(min-width:481px){ #app{ box-shadow:0 0 40px rgba(32,40,31,.10); } body{ background:#E3DCC8; } }
+  button, input, select, textarea{ font-family:var(--font); }
+  button{ transition:transform .12s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, opacity .15s ease; }
+  button:active{ transform:scale(0.96); }
+
+  /* ---- Header ---- */
+  .app-header{
+    background:var(--header-bg); padding:24px 20px 22px; display:flex; justify-content:space-between; align-items:flex-start;
+    border-bottom:1px solid var(--line); position:sticky; top:0; z-index:30;
+  }
+  .app-header .brand-name{font-size:26px; font-weight:800; letter-spacing:-0.02em; line-height:1.1;}
+  .app-header .brand-sub{
+    font-size:11.5px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.06em; margin-top:5px;
+  }
+  .sync-pill{
+    display:inline-flex; align-items:center; gap:6px; margin-top:11px; background:var(--mint); color:var(--mint-ink);
+    border:none; border-radius:999px; padding:6px 12px 6px 10px; font-family:var(--font); font-size:10.5px; font-weight:700; cursor:pointer;
+  }
+  .sync-pill:hover{ filter:brightness(0.96); }
+  .sync-pill svg{ flex-shrink:0; }
+  .sync-pill.syncing svg{animation:spin 0.9s linear infinite;}
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .avatar{
+    width:52px; height:52px; border-radius:50%; background:var(--avatar); color:#fff; display:flex; align-items:center;
+    justify-content:center; font-weight:800; font-size:19px; flex-shrink:0; cursor:pointer; border:none;
+    box-shadow:0 3px 10px rgba(51,71,63,.35);
+  }
+  .avatar:hover{ filter:brightness(1.08); }
+
+  main{padding:22px 18px 8px;}
+
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-bottom:6px;}
+  .section-title{font-size:26px; font-weight:800; letter-spacing:-0.01em; line-height:1.15;}
+  .section-sub{font-size:13.5px; color:var(--muted); margin-top:6px; font-weight:500;}
+  .section-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;}
+
+  .fab-plus{
+    width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 6px 16px rgba(194,74,44,.35);
+  }
+  .fab-plus:hover{background:var(--accent-dark); box-shadow:0 8px 20px rgba(194,74,44,.42); transform:translateY(-1px);}
+  .fab-plus:active{transform:scale(0.94);}
+
+  /* ---- Hero / stat cards ---- */
+  .hero-card{
+    background:var(--surface); border:1px solid var(--line); border-top:5px solid var(--ink); border-radius:var(--radius-lg);
+    padding:22px 22px 24px; margin-bottom:14px; box-shadow:0 4px 14px rgba(32,40,31,.06);
+  }
+  .hero-card .label{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);}
+  .hero-card .value{font-size:42px; font-weight:800; letter-spacing:-0.02em; margin-top:8px; line-height:1;}
+  .hero-card .flag{font-size:13.5px; font-weight:700; color:var(--accent); margin-top:10px;}
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;}
+  .stat-card{border-radius:var(--radius-md); padding:18px 18px 20px; box-shadow:0 3px 10px rgba(32,40,31,.05); transition:transform .15s ease;}
+  .stat-card.mint{background:var(--mint); color:var(--mint-ink);}
+  .stat-card.peach{background:var(--peach); color:var(--peach-ink);}
+  .stat-card.lav{background:var(--lav); color:var(--lav-ink);}
+  .stat-card .label{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; opacity:.85;}
+  .stat-card .value{font-size:24px; font-weight:800; margin-top:8px; color:var(--ink);}
+  .stat-card .icon{
+    width:30px; height:30px; border-radius:9px; background:rgba(255,255,255,.55); display:flex; align-items:center;
+    justify-content:center; margin-bottom:12px; opacity:.9;
+  }
+  .stat-card .icon svg{width:16px; height:16px;}
+
+  /* ---- Buttons ---- */
+  .btn-pill{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--accent); color:#fff;
+    border:none; border-radius:999px; padding:16px 20px; font-family:var(--font); font-weight:700; font-size:15px; cursor:pointer;
+    box-shadow:0 4px 14px rgba(194,74,44,.25);
+  }
+  .btn-pill svg{flex-shrink:0;}
+  .btn-pill:hover{background:var(--accent-dark); box-shadow:0 6px 18px rgba(194,74,44,.32);}
+  .btn-pill.outline{background:transparent; color:var(--accent); border:1.5px solid var(--accent); box-shadow:none;}
+  .btn-pill.outline:hover{background:var(--accent-soft);}
+  .btn-pill.ink{background:var(--ink); color:#fff; box-shadow:0 4px 14px rgba(32,40,31,.22);}
+  .btn-pill.sm{padding:11px 16px; font-size:13.5px; width:auto;}
+  .btn-row{display:flex; gap:10px; margin-bottom:18px;}
+  .btn-row .btn-pill{flex:1;}
+
+  /* ---- Chips ---- */
+  .chip-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px;}
+  .chip{
+    flex-shrink:0; font-size:12.5px; font-weight:700; padding:9px 15px; border-radius:999px; border:1.5px solid var(--line);
+    background:var(--surface); color:var(--muted); cursor:pointer; white-space:nowrap; transition:all .15s ease;
+  }
+  .chip:hover{border-color:var(--ink); color:var(--ink);}
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  /* ---- Panels (charts / lists) ---- */
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); margin-bottom:16px; overflow:hidden; box-shadow:0 3px 10px rgba(32,40,31,.05);}
+  .panel-head{padding:16px 18px 6px;}
+  .panel-head h3{margin:0; font-size:14.5px; font-weight:800;}
+  .panel-body{padding:8px 16px 18px;}
+
+  /* ---- Empty state ---- */
+  .empty-state{text-align:center; padding:50px 24px 30px;}
+  .empty-state .icon-wrap{
+    width:56px; height:56px; border-radius:16px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center;
+    justify-content:center; margin:0 auto 18px;
+  }
+  .empty-state .big{font-size:17px; font-weight:800; margin-bottom:6px;}
+  .empty-state .desc{font-size:13.5px; color:var(--muted); font-weight:500; line-height:1.5; max-width:280px; margin:0 auto;}
+
+  /* ---- List cards ---- */
+  .list-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px 16px; margin-bottom:10px;
+    box-shadow:0 2px 8px rgba(32,40,31,.04); transition:box-shadow .15s ease, border-color .15s ease;
+  }
+  .list-card:hover{box-shadow:0 4px 12px rgba(32,40,31,.08); border-color:#D8CDAE;}
+  .list-card .row-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;}
+  .list-card .title{font-weight:800; font-size:15px;}
+  .list-card .meta{font-size:12.5px; color:var(--muted); font-weight:600; margin-top:2px;}
+  .list-card .amount{font-weight:800; font-size:16px; white-space:nowrap;}
+  .list-card .row-bottom{display:flex; justify-content:space-between; align-items:center; margin-top:10px;}
+  .badge{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:800; text-transform:uppercase;
+    letter-spacing:.04em; padding:5px 11px; border-radius:999px; cursor:pointer; border:1.5px solid transparent; transition:filter .15s ease;
+  }
+  .badge:hover{filter:brightness(0.96);}
+  .badge.paid{background:var(--mint); color:var(--mint-ink);}
+  .badge.unpaid{background:var(--peach); color:var(--peach-ink);}
+  .badge.type{background:var(--bg); color:var(--muted); border-color:var(--line); cursor:default;}
+  .icon-btn{
+    width:32px; height:32px; border-radius:50%; border:1.5px solid var(--line); background:var(--surface); display:flex;
+    align-items:center; justify-content:center; cursor:pointer; color:var(--ink);
+  }
+  .icon-btn:hover{border-color:var(--ink); background:var(--bg);}
+  .icon-btn.danger{color:var(--danger); border-color:#ecd2cf;}
+  .icon-btn.danger:hover{background:#FBEDEB; border-color:var(--danger);}
+  .row-actions{display:flex; gap:6px;}
+
+  /* ---- Forms ---- */
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:7px;}
+  input,select,textarea{
+    width:100%; font-family:var(--font); font-size:14.5px; font-weight:500; padding:14px 16px; border:1.5px solid var(--line);
+    border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input::placeholder{color:#B3AB98;}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--ink); box-shadow:0 0 0 3px rgba(32,40,31,.08);}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  /* ---- Search ---- */
+  .search-wrap{position:relative; margin-bottom:16px;}
+  .search-wrap input{padding-left:42px;}
+  .search-wrap svg{position:absolute; left:14px; top:50%; transform:translateY(-50%); opacity:.5; pointer-events:none;}
+
+  /* ---- Item rows (invoice builder) ---- */
+  .item-card{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px; margin-bottom:10px; position:relative;}
+  .item-card .item-remove{position:absolute; top:10px; right:10px;}
+  .item-card select{margin-bottom:10px;}
+  .item-card input{background:var(--surface);}
+  .item-card .qty-unit-price{display:grid; grid-template-columns:0.8fr 0.9fr 1.3fr; gap:8px;}
+  .item-card .qty-unit-price input{padding:12px 10px; font-size:13px;}
+  .item-card .line-total{margin-top:10px; text-align:right; font-weight:800; font-size:13.5px; color:var(--muted);}
+  .totals-box{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px 18px; margin:18px 0;}
+  .totals-row{display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:13.5px; font-weight:600;}
+  .totals-row.grand{font-size:18px; font-weight:800; border-top:1.5px solid var(--line); margin-top:4px; padding-top:14px; color:var(--accent);}
+  .totals-row .mini-input{width:56px; padding:5px 7px; font-size:12px; text-align:right; display:inline-block; margin-left:6px;}
+
+  /* ---- Bottom sheet modal ---- */
+  .overlay{position:fixed; inset:0; background:rgba(32,40,31,.5); z-index:60; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(1px);}
+  .sheet{
+    width:100%; max-width:480px; background:var(--bg); border-radius:26px 26px 0 0; max-height:92vh; overflow-y:auto;
+    animation:slideUp .22s ease; box-shadow:0 -8px 30px rgba(32,40,31,.25);
+  }
+  @keyframes slideUp{ from{ transform:translateY(30px); opacity:.4;} to{transform:translateY(0); opacity:1;} }
+  .sheet-handle{width:36px; height:4px; border-radius:2px; background:var(--line); margin:10px auto 0;}
+  .sheet-head{
+    display:flex; justify-content:space-between; align-items:center; padding:14px 22px 6px; position:sticky; top:0; background:var(--bg);
+  }
+  .sheet-head h3{margin:0; font-size:22px; font-weight:800;}
+  .sheet-close{
+    width:34px; height:34px; border-radius:50%; border:none; background:var(--surface); color:var(--ink); font-size:18px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .sheet-close:hover{background:var(--line);}
+  .sheet-body{padding:14px 22px 10px;}
+  .sheet-foot{padding:8px 22px 26px;}
+
+  /* ---- Bottom nav ---- */
+  .bottom-nav{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:var(--surface);
+    border-top:1px solid var(--line); display:flex; justify-content:space-around; padding:10px 8px 14px; z-index:40;
+    box-shadow:0 -4px 16px rgba(32,40,31,.06);
+  }
+  .nav-item{
+    display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; cursor:pointer;
+    color:var(--muted); font-family:var(--font); font-size:10.5px; font-weight:700; padding:6px 4px; flex:1; border-radius:14px;
+    transition:background-color .15s ease, color .15s ease;
+  }
+  .nav-item svg{width:21px; height:21px;}
+  .nav-item.active{color:var(--accent); background:var(--accent-soft);}
+
+  /* ---- Profile page ---- */
+  .headline{font-size:27px; font-weight:800; line-height:1.15; margin-bottom:16px; letter-spacing:-0.01em;}
+  .logo-box{
+    width:88px; height:88px; border-radius:var(--radius-md); background:var(--surface); border:1.5px dashed var(--line);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:18px; cursor:pointer; color:var(--muted);
+    transition:border-color .15s ease;
+  }
+  .logo-box:hover{border-color:var(--accent); color:var(--accent);}
+  .logo-box img{width:100%; height:100%; object-fit:contain;}
+  .upload-row{display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--line);}
+  .upload-row .u-label{font-weight:700; font-size:14px;}
+  .upload-row .u-status{font-size:12px; color:var(--muted); margin-top:2px;}
+  .btn-outline-sm{
+    display:flex; align-items:center; gap:6px; border:1.5px solid var(--accent); color:var(--accent); background:transparent;
+    border-radius:999px; padding:8px 15px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:var(--font); white-space:nowrap;
+    transition:background-color .15s ease;
+  }
+  .btn-outline-sm:hover{background:var(--accent-soft);}
+
+  .toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; font-size:12.5px;
+    font-weight:700; padding:12px 18px; border-radius:999px; opacity:0; transition:all .2s ease; z-index:100; pointer-events:none;
+    box-shadow:0 6px 20px rgba(32,40,31,.3); max-width:88%; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+  ::-webkit-scrollbar{width:0; height:0;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================= ICONS ============================= */
+const ICONS = {
+  grid: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
+  file: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M14 2v5h5"/><path d="M9 13h6M9 17h6"/></svg>`,
+  box: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>`,
+  users: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.3"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.8 14a5.8 5.8 0 0 1 5.7 6"/></svg>`,
+  briefcase: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7.5" width="19" height="12.5" rx="1.5"/><path d="M8 7.5V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2.5"/><path d="M2.5 12.5h19"/></svg>`,
+  plus: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+  doc: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M9 13h6M9 17h6"/></svg>`,
+  search: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>`,
+  pdf: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0 0-4-4m4 4 4-4"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>`,
+  send: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>`,
+  trash: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3m2 0-1 14a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg>`,
+  edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
+  upload: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>`,
+  close: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>`,
+  sync: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`
+};
+
+/* ============================= STORAGE HELPERS (via API server berlisensi) ============================= */
+const LICENSE_KEY = localStorage.getItem('licenseKey') || '';
+
+async function apiFetch(path, options){
+  const res = await fetch(path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'X-License-Key': LICENSE_KEY, ...(options?.headers||{}) }
+  });
+  if(res.status === 401 || res.status === 403){
+    const body = await res.json().catch(()=>({}));
+    showLockScreen(body.message || 'Akses tidak aktif.');
+    throw new Error('LICENSE_BLOCKED');
+  }
+  return res;
+}
+
+async function storeGet(key, fallback){
+  try{
+    const res = await apiFetch('/api/data/' + key);
+    if(!res.ok) return fallback;
+    const body = await res.json();
+    return body.value ?? fallback;
+  }catch(e){ return fallback; }
+}
+async function storeSet(key, value){
+  try{
+    await apiFetch('/api/data/' + key, { method:'PUT', body: JSON.stringify({ value }) });
+  }catch(e){ console.error('storage set failed', key, e); }
+}
+
+function showLockScreen(message){
+  clearInterval(window.__syncTimer);
+  document.getElementById('app').innerHTML = `
+    <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:32px; text-align:center; background:var(--bg); z-index:200;">
+      <div>
+        <div style="width:64px;height:64px;border-radius:18px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">${ICONS.briefcase}</div>
+        <div style="font-size:19px;font-weight:800;margin-bottom:8px;">Akses Tidak Aktif</div>
+        <div style="font-size:13.5px;color:var(--muted);max-width:280px;margin:0 auto 22px;line-height:1.5;">${escapeHtml(message)}</div>
+        <button class="btn-pill" style="width:auto;padding:12px 24px;" onclick="localStorage.removeItem('licenseKey'); location.reload();">Ganti License Key</button>
+      </div>
+    </div>`;
+}
+
+function showLicensePrompt(){
+  document.getElementById('app').innerHTML = `
+    <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:32px; background:var(--bg); z-index:200;">
+      <div style="width:100%; max-width:340px;">
+        <div style="font-size:22px;font-weight:800;margin-bottom:6px;">Masuk</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">Masukkan license key yang diberikan oleh admin.</div>
+        <input id="licenseInput" placeholder="XXXX-XXXX-XXXX" style="text-align:center; letter-spacing:.08em; font-weight:700; margin-bottom:12px;">
+        <div id="licenseError" style="color:var(--danger); font-size:12.5px; margin-bottom:12px; display:none;"></div>
+        <button class="btn-pill" id="licenseSubmit">Masuk</button>
+      </div>
+    </div>`;
+  const input = document.getElementById('licenseInput');
+  const err = document.getElementById('licenseError');
+  input.focus();
+  const submit = async ()=>{
+    const key = input.value.trim().toUpperCase();
+    if(!key){ return; }
+    err.style.display = 'none';
+    try{
+      const res = await fetch('/api/verify?key=' + encodeURIComponent(key));
+      const body = await res.json();
+      if(res.ok && body.active){
+        localStorage.setItem('licenseKey', key);
+        location.reload();
+      } else {
+        err.textContent = body.message || 'License key tidak valid.';
+        err.style.display = 'block';
+      }
+    }catch(e){
+      err.textContent = 'Tidak bisa terhubung ke server. Coba lagi.';
+      err.style.display = 'block';
+    }
+  };
+  document.getElementById('licenseSubmit').onclick = submit;
+  input.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
+}
+
+/* ============================= STATE ============================= */
+const state = {
+  tab: 'dashboard',
+  settings: null, contacts: [], products: [], invoices: [],
+  loaded: false,
+  invoiceFilter: 'all',
+  productSearch: '',
+  invoiceModalOpen: false, draftInvoice: null,
+  contactModalOpen: false, productModalOpen: false,
+  editingContactId: null, editingProductId: null,
+  chartInstances: {},
+  syncing: false, lastSyncedAt: null
+};
+
+const DEFAULT_SETTINGS = {
+  companyName: 'Usaha Anda', companyAddress: '', companyPhone: '', companyEmail: '', npwp: '',
+  logoDataUrl: '', logoAspect: 1, signatureDataUrl: '',
+  bankName: '', bankAccountNumber: '', bankAccountHolder: '',
+  defaultCreditTerms: '', defaultCostCenter: '',
+  defaultTaxPct: 11, invoiceSeq: 0, lowStockThreshold: 5
+};
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function rupiah(n){ n = Number(n)||0; return 'Rp' + n.toLocaleString('id-ID', {maximumFractionDigits:0}); }
+function fmtDate(d){ if(!d) return '-'; return new Date(d).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}); }
+function showToast(msg){
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._tm); showToast._tm = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function initials(name){ return (name||'U').trim().slice(0,1).toUpperCase(); }
+function escapeHtml(str){ return String(str??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ============================= INIT ============================= */
+async function boot(){
+  if(!LICENSE_KEY){ showLicensePrompt(); return; }
+  try{
+    const res = await fetch('/api/verify', { headers: { 'X-License-Key': LICENSE_KEY } });
+    const body = await res.json();
+    if(!res.ok || !body.active){
+      showLockScreen(body.message || 'Akses tidak aktif.');
+      return;
+    }
+  }catch(e){
+    showLockScreen('Tidak bisa terhubung ke server. Periksa koneksi internet Anda.');
+    return;
+  }
+  document.getElementById('app').style.paddingBottom = '';
+  init();
+}
+
+async function init(){
+  const [settings, contacts, products, invoices] = await Promise.all([
+    storeGet('settings', DEFAULT_SETTINGS), storeGet('contacts', []), storeGet('products', []), storeGet('invoices', [])
+  ]);
+  state.settings = Object.assign({}, DEFAULT_SETTINGS, settings);
+  state.contacts = contacts; state.products = products; state.invoices = invoices;
+  state.loaded = true; state.lastSyncedAt = new Date();
+  render();
+  window.__syncTimer = setInterval(syncFromServer, 6000);
+}
+async function persist(keys){
+  const map = {settings:state.settings, contacts:state.contacts, products:state.products, invoices:state.invoices};
+  await Promise.all(keys.map(k=>storeSet(k, map[k])));
+  state.lastSyncedAt = new Date();
+}
+
+function isUserTyping(){
+  const ae = document.activeElement;
+  if(!ae) return false;
+  return ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName);
+}
+
+// Menarik data terbaru dari server secara berkala, dan sekaligus memeriksa apakah langganan
+// masih aktif (kalau admin menonaktifkan akses, aplikasi otomatis terkunci dalam ~6 detik).
+// Dilewati kalau ada modal terbuka atau pengguna sedang mengetik, supaya tidak menimpa
+// perubahan yang belum tersimpan.
+async function syncFromServer(manual){
+  if(state.syncing) return;
+  if(!manual && (state.invoiceModalOpen || state.contactModalOpen || state.productModalOpen || isUserTyping())) return;
+  state.syncing = true;
+  try{
+    const [settings, contacts, products, invoices] = await Promise.all([
+      storeGet('settings', state.settings), storeGet('contacts', state.contacts),
+      storeGet('products', state.products), storeGet('invoices', state.invoices)
+    ]);
+    const before = JSON.stringify({s:state.settings, c:state.contacts, p:state.products, i:state.invoices});
+    const after = JSON.stringify({s:settings, c:contacts, p:products, i:invoices});
+    state.lastSyncedAt = new Date();
+    if(before !== after){
+      state.settings = Object.assign({}, DEFAULT_SETTINGS, settings);
+      state.contacts = contacts; state.products = products; state.invoices = invoices;
+      render();
+      showToast('Data diperbarui dari perangkat lain');
+    } else if(manual){
+      showToast('Sudah data terbaru');
+      renderSyncIndicator();
+    }
+  } catch(e){ /* LICENSE_BLOCKED sudah menampilkan lock screen; error lain: coba lagi di interval berikutnya */ }
+  finally{ state.syncing = false; }
+}
+function renderSyncIndicator(){
+  const el = document.getElementById('syncTime');
+  if(el && state.lastSyncedAt) el.textContent = 'Sinkron ' + state.lastSyncedAt.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+}
+
+/* ============================= BUSINESS LOGIC ============================= */
+function nextInvoiceNumber(type){
+  state.settings.invoiceSeq = (state.settings.invoiceSeq||0) + 1;
+  const prefix = type === 'purchase' ? 'PO' : 'INV';
+  return `${prefix}-${new Date().getFullYear()}-${String(state.settings.invoiceSeq).padStart(4,'0')}`;
+}
+function calcInvoiceTotals(items, taxPct, discountPct){
+  const subtotal = items.reduce((s,it)=> s + (Number(it.qty)||0)*(Number(it.price)||0), 0);
+  const discountAmt = subtotal * (Number(discountPct)||0) / 100;
+  const taxAmt = (subtotal - discountAmt) * (Number(taxPct)||0) / 100;
+  return {subtotal, discountAmt, taxAmt, total: subtotal - discountAmt + taxAmt};
+}
+function applyStockForInvoice(invoice, direction){
+  invoice.items.forEach(item=>{
+    if(!item.productId) return;
+    const p = state.products.find(p=>p.id===item.productId); if(!p) return;
+    const sign = invoice.type === 'purchase' ? 1 : -1;
+    p.stock = (Number(p.stock)||0) + sign * direction * (Number(item.qty)||0);
+  });
+}
+async function toggleInvoiceStatus(invId){
+  const inv = state.invoices.find(i=>i.id===invId); if(!inv) return;
+  if(inv.status === 'unpaid'){
+    inv.status = 'paid';
+    if(!inv.stockApplied){ applyStockForInvoice(inv, 1); inv.stockApplied = true; }
+    showToast(inv.type==='purchase' ? 'Stok masuk tercatat' : 'Ditandai lunas — stok terpotong');
+  } else {
+    inv.status = 'unpaid';
+    if(inv.stockApplied){ applyStockForInvoice(inv, -1); inv.stockApplied = false; }
+    showToast('Ditandai belum lunas — stok dikembalikan');
+  }
+  await persist(['invoices','products']); render();
+}
+async function deleteInvoice(invId){
+  const inv = state.invoices.find(i=>i.id===invId); if(!inv) return;
+  if(!confirm(`Hapus invoice ${inv.number}?`)) return;
+  if(inv.stockApplied) applyStockForInvoice(inv, -1);
+  state.invoices = state.invoices.filter(i=>i.id!==invId);
+  await persist(['invoices','products']); showToast('Invoice dihapus'); render();
+}
+
+/* ============================= RENDER ROOT ============================= */
+function render(){
+  const app = document.getElementById('app');
+  if(!state.loaded){ app.innerHTML = `<div style="padding:60px 24px;color:var(--muted);font-weight:600;">Memuat data…</div>`; return; }
+  app.innerHTML = `
+    ${renderHeader()}
+    <main>${renderPage()}</main>
+    ${renderBottomNav()}
+  `;
+  attachGlobalEvents();
+  if(state.tab === 'dashboard') renderCharts();
+  if(state.invoiceModalOpen) mountInvoiceModal();
+  if(state.contactModalOpen) mountContactModal();
+  if(state.productModalOpen) mountProductModal();
+}
+
+function renderHeader(){
+  const s = state.settings;
+  return `
+  <header class="app-header">
+    <div>
+      <div class="brand-name">Invoice</div>
+      <div class="brand-sub">${escapeHtml(s.companyName || 'Selamat datang kembali')}</div>
+      <button class="sync-pill" id="syncBtn" title="Sinkronkan sekarang">${ICONS.sync}<span id="syncTime">${state.lastSyncedAt ? 'Sinkron ' + state.lastSyncedAt.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : 'Menyinkronkan…'}</span></button>
+    </div>
+    <button class="avatar" data-nav="profile">${initials(s.companyName)}</button>
+  </header>`;
+}
+
+function renderBottomNav(){
+  const items = [
+    ['dashboard','Ringkasan',ICONS.grid],
+    ['invoices','Invoice',ICONS.file],
+    ['inventory','Stok',ICONS.box],
+    ['contacts','Klien',ICONS.users],
+    ['profile','Profil',ICONS.briefcase],
+  ];
+  return `
+  <nav class="bottom-nav">
+    ${items.map(([key,label,icon])=>`
+      <button class="nav-item ${state.tab===key?'active':''}" data-nav="${key}">
+        ${icon}<span>${label}</span>
+      </button>`).join('')}
+  </nav>`;
+}
+
+function renderPage(){
+  switch(state.tab){
+    case 'dashboard': return renderDashboard();
+    case 'invoices': return renderInvoices();
+    case 'inventory': return renderInventory();
+    case 'contacts': return renderContacts();
+    case 'profile': return renderProfile();
+    default: return '';
+  }
+}
+
+/* ============================= DASHBOARD ============================= */
+function renderDashboard(){
+  const unpaidTotal = state.invoices.filter(i=>i.status==='unpaid' && i.type==='sale').reduce((s,i)=>s+i.total,0);
+  const unpaidCount = state.invoices.filter(i=>i.status==='unpaid' && i.type==='sale').length;
+  const now = new Date();
+  const paidThisMonth = state.invoices.filter(i=>{
+    if(i.status!=='paid' || i.type!=='sale') return false;
+    const d = new Date(i.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).reduce((s,i)=>s+i.total,0);
+  const lowStock = state.products.filter(p=>Number(p.stock) <= (state.settings.lowStockThreshold||5));
+  const recent = state.invoices.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,4);
+
+  return `
+  <div class="hero-card">
+    <div class="label">Belum Dibayar</div>
+    <div class="value">${rupiah(unpaidTotal)}</div>
+    <div class="flag">${unpaidCount} invoice terbuka</div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card mint"><div class="icon">${ICONS.file}</div><div class="label">Lunas Bulan Ini</div><div class="value">${rupiah(paidThisMonth)}</div></div>
+    <div class="stat-card peach"><div class="icon">${ICONS.file}</div><div class="label">Total Invoice</div><div class="value">${state.invoices.length}</div></div>
+  </div>
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div class="stat-card lav"><div class="icon">${ICONS.box}</div><div class="label">Total Produk</div><div class="value">${state.products.length}</div></div>
+    <div class="stat-card ${lowStock.length ? 'peach' : 'mint'}"><div class="icon">${ICONS.box}</div><div class="label">Stok Menipis</div><div class="value">${lowStock.length}</div></div>
+  </div>
+
+  <button class="btn-pill" data-open-invoice="sale">${ICONS.plus}Buat Invoice Baru</button>
+
+  <div class="panel" style="margin-top:24px;">
+    <div class="panel-head"><h3>Arus stok — 14 hari terakhir</h3></div>
+    <div class="panel-body"><canvas id="chartFlow" height="160"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Level stok saat ini</h3></div>
+    <div class="panel-body"><canvas id="chartStock" height="170"></canvas></div>
+  </div>
+
+  <div class="section-head" style="margin-top:10px;">
+    <div class="section-title" style="font-size:20px;">Invoice terbaru</div>
+  </div>
+  ${recent.length ? recent.map(renderInvoiceCard).join('') : emptyState('doc','Belum ada invoice','Mulai dari invoice pertama Anda.')}
+  `;
+}
+
+function buildFlowSeries(){
+  const days = [];
+  for(let i=13;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const inMap = {}, outMap = {};
+  days.forEach(d=>{inMap[d]=0; outMap[d]=0;});
+  state.invoices.filter(i=>i.status==='paid').forEach(inv=>{
+    const key = new Date(inv.date).toISOString().slice(0,10);
+    if(!(key in inMap)) return;
+    const qty = inv.items.reduce((s,it)=>s+(Number(it.qty)||0),0);
+    if(inv.type==='purchase') inMap[key]+=qty; else outMap[key]+=qty;
+  });
+  return { labels: days.map(d=>new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'})), stockIn: days.map(d=>inMap[d]), stockOut: days.map(d=>outMap[d]) };
+}
+
+function renderCharts(){
+  if(!window.Chart) return;
+  Object.values(state.chartInstances).forEach(c=>c && c.destroy());
+  const flowCtx = document.getElementById('chartFlow');
+  const stockCtx = document.getElementById('chartStock');
+  const fontFamily = 'Plus Jakarta Sans';
+  if(flowCtx){
+    const {labels, stockIn, stockOut} = buildFlowSeries();
+    state.chartInstances.flow = new Chart(flowCtx, {
+      type:'bar',
+      data:{ labels, datasets:[
+        {label:'Masuk', data:stockIn, backgroundColor:'#20281F', borderRadius:4},
+        {label:'Keluar', data:stockOut, backgroundColor:'#C24A2C', borderRadius:4}
+      ]},
+      options:{ responsive:true, plugins:{legend:{position:'bottom', labels:{font:{family:fontFamily, size:11, weight:'600'}, boxWidth:10}}},
+        scales:{ x:{ticks:{font:{family:fontFamily, size:9}}, grid:{display:false}}, y:{ticks:{font:{family:fontFamily, size:9}}, grid:{color:'#E3DAC3'}} } }
+    });
+  }
+  if(stockCtx){
+    const top = state.products.slice().sort((a,b)=>b.stock-a.stock).slice(0,7);
+    state.chartInstances.stock = new Chart(stockCtx, {
+      type:'bar',
+      data:{ labels: top.map(p=>p.name), datasets:[{label:'Stok', data: top.map(p=>p.stock), backgroundColor:'#C24A2C', borderRadius:4}] },
+      options:{ indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+        scales:{ x:{ticks:{font:{family:fontFamily, size:9}}, grid:{color:'#E3DAC3'}}, y:{ticks:{font:{family:fontFamily, size:10, weight:'600'}}, grid:{display:false}} } }
+    });
+  }
+}
+
+function emptyState(icon, title, desc){
+  return `<div class="empty-state"><div class="icon-wrap">${ICONS[icon]||ICONS.doc}</div><div class="big">${title}</div><div class="desc">${desc}</div></div>`;
+}
+
+/* ============================= INVOICES ============================= */
+function renderInvoices(){
+  let list = state.invoices.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(state.invoiceFilter!=='all'){
+    list = list.filter(i=> (state.invoiceFilter==='unpaid'||state.invoiceFilter==='paid') ? i.status===state.invoiceFilter : i.type===state.invoiceFilter);
+  }
+  return `
+  <div class="eyebrow">Arsip</div>
+  <div class="section-head">
+    <div>
+      <div class="section-title">Semua invoice</div>
+      <div class="section-sub">${state.invoices.length} dokumen tersimpan</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-pill outline sm" data-open-invoice="purchase">+ Pembelian Stok</button>
+    <button class="btn-pill sm" data-open-invoice="sale">+ Invoice Penjualan</button>
+  </div>
+  <div class="chip-row">
+    ${['all','unpaid','paid','sale','purchase'].map(f=>`<button class="chip ${state.invoiceFilter===f?'active':''}" data-inv-filter="${f}">${
+      {all:'Semua',unpaid:'Belum Lunas',paid:'Lunas',sale:'Penjualan',purchase:'Pembelian'}[f]
+    }</button>`).join('')}
+  </div>
+  ${list.length ? list.map(renderInvoiceCard).join('') : emptyState('doc','Belum ada invoice','Buat invoice pertama untuk mulai mencatat transaksi.')}
+  `;
+}
+
+function renderInvoiceCard(inv){
+  const statusLabel = inv.status==='paid' ? (inv.type==='purchase'?'Diterima':'Lunas') : (inv.type==='purchase'?'Dipesan':'Belum Lunas');
+  return `
+  <div class="list-card">
+    <div class="row-top">
+      <div>
+        <div class="title">${inv.number}</div>
+        <div class="meta">${escapeHtml(inv.contactName||'-')} · ${fmtDate(inv.date)}</div>
+      </div>
+      <div class="amount">${rupiah(inv.total)}</div>
+    </div>
+    <div class="row-bottom">
+      <div style="display:flex;gap:6px;">
+        <span class="badge type">${inv.type==='sale'?'Penjualan':'Pembelian'}</span>
+        <span class="badge ${inv.status}" data-toggle-status="${inv.id}">${statusLabel}</span>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" data-pdf="${inv.id}" title="Unduh PDF">${ICONS.pdf}</button>
+        <button class="icon-btn" data-wa="${inv.id}" title="Kirim ke WhatsApp">${ICONS.send}</button>
+        <button class="icon-btn danger" data-del-invoice="${inv.id}" title="Hapus">${ICONS.trash}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================= INVENTORY ============================= */
+function renderInventory(){
+  let list = state.products.slice();
+  if(state.productSearch){
+    const q = state.productSearch.toLowerCase();
+    list = list.filter(p=>p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q));
+  }
+  list.sort((a,b)=>a.name.localeCompare(b.name));
+  return `
+  <div class="eyebrow">Stok</div>
+  <div class="section-head">
+    <div>
+      <div class="section-title">Inventaris</div>
+      <div class="section-sub">${state.products.length} produk terdaftar</div>
+    </div>
+    <button class="fab-plus" data-open-product="">${ICONS.plus}</button>
+  </div>
+  <div class="search-wrap">${ICONS.search}<input type="text" id="productSearch" placeholder="Cari nama atau SKU…" value="${escapeAttr(state.productSearch)}"></div>
+  ${!list.length ? emptyState('box','Belum ada produk','Tambahkan produk agar bisa dipakai di invoice pembelian & penjualan.') :
+    list.map(p=>`
+    <div class="list-card">
+      <div class="row-top">
+        <div>
+          <div class="title">${escapeHtml(p.name)}</div>
+          <div class="meta">${escapeHtml(p.sku||'Tanpa SKU')} · ${rupiah(p.price)}</div>
+        </div>
+        <div class="amount" style="${Number(p.stock)<=(state.settings.lowStockThreshold||5)?'color:var(--danger);':''}">${p.stock} unit</div>
+      </div>
+      <div class="row-bottom" style="justify-content:flex-end;">
+        <div class="row-actions">
+          <button class="icon-btn" data-open-product="${p.id}">${ICONS.edit}</button>
+          <button class="icon-btn danger" data-del-product="${p.id}">${ICONS.trash}</button>
+        </div>
+      </div>
+    </div>`).join('')}
+  `;
+}
+
+/* ============================= CONTACTS ============================= */
+function renderContacts(){
+  const list = state.contacts.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  return `
+  <div class="eyebrow">Kontak</div>
+  <div class="section-head">
+    <div class="section-title">Klien</div>
+    <button class="fab-plus" data-open-contact="">${ICONS.plus}</button>
+  </div>
+  ${!list.length ? emptyState('users','Simpan klien pertama','Agar pembuatan invoice berikutnya tinggal pilih dari daftar.') :
+    list.map(c=>`
+    <div class="list-card">
+      <div class="row-top">
+        <div>
+          <div class="title">${escapeHtml(c.name)}</div>
+          <div class="meta">${escapeHtml(c.phone||'-')}</div>
+        </div>
+      </div>
+      <div class="row-bottom">
+        <div class="meta">${escapeHtml(c.address||'-')}</div>
+        <div class="row-actions">
+          <button class="icon-btn" data-open-contact="${c.id}">${ICONS.edit}</button>
+          <button class="icon-btn danger" data-del-contact="${c.id}">${ICONS.trash}</button>
+        </div>
+      </div>
+    </div>`).join('')}
+  `;
+}
+
+/* ============================= PROFILE / SETTINGS ============================= */
+function renderProfile(){
+  const s = state.settings;
+  return `
+  <div class="eyebrow">Profil Usaha</div>
+  <div class="headline">Terlihat profesional.</div>
+
+  <div class="logo-box" id="logoBox">${s.logoDataUrl ? `<img src="${s.logoDataUrl}">` : ICONS.briefcase}</div>
+
+  <form id="settingsForm">
+    <div class="field"><label>Nama usaha</label><input name="companyName" value="${escapeAttr(s.companyName)}" required></div>
+    <div class="field"><label>Alamat usaha</label><input name="companyAddress" value="${escapeAttr(s.companyAddress)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Telepon</label><input name="companyPhone" value="${escapeAttr(s.companyPhone)}"></div>
+      <div class="field"><label>Email</label><input name="companyEmail" value="${escapeAttr(s.companyEmail)}"></div>
+    </div>
+    <div class="field"><label>NPWP</label><input name="npwp" value="${escapeAttr(s.npwp)}"></div>
+
+    <div class="upload-row">
+      <div><div class="u-label">Logo usaha</div><div class="u-status">${s.logoDataUrl ? 'File siap digunakan' : 'Belum ada file'}</div></div>
+      <button type="button" class="btn-outline-sm" id="pickLogo">${ICONS.upload}Pilih</button>
+      <input type="file" id="logoInput" accept="image/*" style="display:none;">
+    </div>
+    <div class="upload-row">
+      <div><div class="u-label">Tanda tangan</div><div class="u-status">${s.signatureDataUrl ? 'File siap digunakan' : 'Belum ada file'}</div></div>
+      <button type="button" class="btn-outline-sm" id="pickSig">${ICONS.upload}Pilih</button>
+      <input type="file" id="sigInput" accept="image/*" style="display:none;">
+    </div>
+
+    <div class="eyebrow" style="margin-top:22px;">Info Rekening (tampil di PDF invoice)</div>
+    <div class="field"><label>Nama Bank</label><input name="bankName" placeholder="cth. Bank BCA" value="${escapeAttr(s.bankName)}"></div>
+    <div class="field-row">
+      <div class="field"><label>No. Rekening</label><input name="bankAccountNumber" value="${escapeAttr(s.bankAccountNumber)}"></div>
+      <div class="field"><label>Atas Nama</label><input name="bankAccountHolder" value="${escapeAttr(s.bankAccountHolder)}"></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:22px;">Detail PO/Invoice (opsional, tampil di PDF)</div>
+    <div class="field-row">
+      <div class="field"><label>Credit Terms Default</label><input name="defaultCreditTerms" placeholder="cth. Sesuai dengan perjanjian" value="${escapeAttr(s.defaultCreditTerms)}"></div>
+      <div class="field"><label>Cost Center Default</label><input name="defaultCostCenter" placeholder="cth. Logistik" value="${escapeAttr(s.defaultCostCenter)}"></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:22px;">Pengaturan Invoice</div>
+    <div class="field-row">
+      <div class="field"><label>Pajak default (%)</label><input type="number" name="defaultTaxPct" value="${s.defaultTaxPct}" min="0" step="0.1"></div>
+      <div class="field"><label>Batas stok menipis</label><input type="number" name="lowStockThreshold" value="${s.lowStockThreshold}" min="0"></div>
+    </div>
+
+    <button class="btn-pill" type="submit" style="margin-top:8px;">Simpan Profil</button>
+  </form>
+
+  <div class="panel" style="margin-top:22px; border-color:var(--accent);">
+    <div class="panel-body" style="font-size:12.5px; color:var(--ink); font-weight:600; line-height:1.6; padding-top:16px;">
+      🔄 Data tersimpan di server dan otomatis sinkron ke semua perangkat yang memakai license key yang sama, tiap ±6 detik.<br><br>
+      <span style="color:var(--muted); font-weight:500;">Akses ke aplikasi ini dikendalikan oleh pemilik layanan. Jika akses dinonaktifkan, aplikasi akan otomatis terkunci.</span>
+    </div>
+  </div>
+  `;
+}
+
+/* ============================= INVOICE MODAL ============================= */
+function openInvoiceModal(type){
+  state.draftInvoice = {
+    type: type || 'sale', contactId: '', date: new Date().toISOString().slice(0,10), needDate: '',
+    items: [{ id: uid(), productId:'', name:'', qty:1, unit:'pcs', lot:'', price:0 }],
+    taxPct: state.settings.defaultTaxPct, discountPct: 0, notes: '',
+    creditTerms: state.settings.defaultCreditTerms || '', costCenter: state.settings.defaultCostCenter || ''
+  };
+  state.invoiceModalOpen = true; render();
+}
+function closeInvoiceModal(){
+  state.invoiceModalOpen = false; state.draftInvoice = null;
+  document.querySelectorAll('#invoiceOverlay').forEach(el=>el.remove());
+  render();
+}
+
+function mountInvoiceModal(){
+  document.querySelectorAll('#invoiceOverlay').forEach(el=>el.remove());
+  const host = document.createElement('div'); host.className = 'overlay'; host.id = 'invoiceOverlay';
+  const d = state.draftInvoice;
+  const totals = calcInvoiceTotals(d.items, d.taxPct, d.discountPct);
+  host.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <h3>${d.type==='sale' ? 'Invoice penjualan' : 'Pembelian stok'}</h3>
+        <button class="sheet-close" id="invClose">${ICONS.close}</button>
+      </div>
+      <div class="sheet-body">
+        <div class="field"><label>${d.type==='sale' ? 'Klien' : 'Supplier'}</label>
+          <select id="invContact">
+            <option value="">— Pilih kontak —</option>
+            ${state.contacts.map(c=>`<option value="${c.id}" ${d.contactId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Tanggal</label><input type="date" id="invDate" value="${d.date}"></div>
+          <div class="field"><label>Tanggal Butuh (opsional)</label><input type="date" id="invNeedDate" value="${d.needDate||''}"></div>
+        </div>
+
+        <label style="display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;">Item</label>
+        <div id="invItemsBody">${d.items.map(renderItemCard).join('')}</div>
+        <button class="btn-pill outline sm" id="invAddItem" style="width:100%;justify-content:center;margin-top:4px;">+ Tambah Baris</button>
+
+        <div class="field" style="margin-top:16px;"><label>Catatan (opsional)</label><textarea id="invNotes" rows="2" placeholder="cth. Untuk kebutuhan hari Kamis...">${escapeHtml(d.notes||'')}</textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Credit Terms (opsional)</label><input id="invCreditTerms" placeholder="cth. Sesuai dengan perjanjian" value="${escapeAttr(d.creditTerms||'')}"></div>
+          <div class="field"><label>Cost Center (opsional)</label><input id="invCostCenter" placeholder="cth. Logistik" value="${escapeAttr(d.costCenter||'')}"></div>
+        </div>
+
+        <div class="totals-box">
+          <div class="totals-row"><span>Subtotal</span><span id="totalsSubtotal">${rupiah(totals.subtotal)}</span></div>
+          <div class="totals-row"><span>Diskon<input type="number" id="invDiscount" class="mini-input" value="${d.discountPct}" min="0" max="100">%</span><span id="totalsDiscountAmt">-${rupiah(totals.discountAmt)}</span></div>
+          <div class="totals-row"><span>Pajak<input type="number" id="invTax" class="mini-input" value="${d.taxPct}" min="0" max="100">%</span><span id="totalsTaxAmt">+${rupiah(totals.taxAmt)}</span></div>
+          <div class="totals-row grand"><span>Total</span><span id="totalsGrand">${rupiah(totals.total)}</span></div>
+        </div>
+      </div>
+      <div class="sheet-foot"><button class="btn-pill" id="invSave">Simpan Invoice</button></div>
+    </div>`;
+  document.body.appendChild(host);
+
+  host.querySelector('#invClose').onclick = closeInvoiceModal;
+  host.addEventListener('mousedown', e=>{ if(e.target===host) closeInvoiceModal(); });
+  host.querySelector('#invContact').onchange = e=>{ d.contactId = e.target.value; };
+  host.querySelector('#invDate').onchange = e=>{ d.date = e.target.value; };
+  host.querySelector('#invNeedDate').onchange = e=>{ d.needDate = e.target.value; };
+  host.querySelector('#invCreditTerms').oninput = e=>{ d.creditTerms = e.target.value; };
+  host.querySelector('#invCostCenter').oninput = e=>{ d.costCenter = e.target.value; };
+  host.querySelector('#invDiscount').oninput = e=>{ d.discountPct = e.target.value; updateTotalsBox(); };
+  host.querySelector('#invTax').oninput = e=>{ d.taxPct = e.target.value; updateTotalsBox(); };
+  host.querySelector('#invAddItem').onclick = ()=>{ d.items.push({id:uid(), productId:'', name:'', qty:1, unit:'pcs', lot:'', price:0}); refreshModal(); };
+  host.querySelector('#invNotes').oninput = e=>{ d.notes = e.target.value; };
+  host.querySelectorAll('[data-item-remove]').forEach(btn=>{
+    btn.onclick = ()=>{ d.items = d.items.filter(it=>it.id!==btn.dataset.itemRemove); if(!d.items.length) d.items.push({id:uid(),productId:'',name:'',qty:1,unit:'pcs',lot:'',price:0}); refreshModal(); };
+  });
+  host.querySelectorAll('[data-item-product]').forEach(sel=>{
+    sel.onchange = ()=>{
+      const it = d.items.find(x=>x.id===sel.dataset.itemProduct); const p = state.products.find(p=>p.id===sel.value);
+      it.productId = sel.value; if(p){ it.name = p.name; it.price = p.price; } refreshModal();
+    };
+  });
+  // Qty/price/tax/discount update live in place (no remount) so typing multi-digit numbers
+  // never loses focus or resets the cursor mid-entry.
+  host.querySelectorAll('[data-item-name]').forEach(inp=>{
+    inp.oninput = ()=>{ d.items.find(x=>x.id===inp.dataset.itemName).name = inp.value; };
+  });
+  host.querySelectorAll('[data-item-unit]').forEach(inp=>{
+    inp.oninput = ()=>{ d.items.find(x=>x.id===inp.dataset.itemUnit).unit = inp.value; };
+  });
+  host.querySelectorAll('[data-item-lot]').forEach(inp=>{
+    inp.oninput = ()=>{ d.items.find(x=>x.id===inp.dataset.itemLot).lot = inp.value; };
+  });
+  host.querySelectorAll('[data-item-qty]').forEach(inp=>{
+    inp.oninput = ()=>{ d.items.find(x=>x.id===inp.dataset.itemQty).qty = inp.value; updateLineAndTotals(inp.dataset.itemQty); };
+  });
+  host.querySelectorAll('[data-item-price]').forEach(inp=>{
+    inp.oninput = ()=>{ d.items.find(x=>x.id===inp.dataset.itemPrice).price = inp.value; updateLineAndTotals(inp.dataset.itemPrice); };
+  });
+  host.querySelector('#invSave').onclick = saveInvoiceDraft;
+
+  function refreshModal(){ host.remove(); mountInvoiceModal(); }
+
+  function updateLineAndTotals(itemId){
+    const it = d.items.find(x=>x.id===itemId);
+    const lineTotal = (Number(it.qty)||0) * (Number(it.price)||0);
+    const el = host.querySelector(`[data-line-total="${itemId}"]`);
+    if(el) el.textContent = rupiah(lineTotal);
+    updateTotalsBox();
+  }
+  function updateTotalsBox(){
+    const totals = calcInvoiceTotals(d.items, d.taxPct, d.discountPct);
+    host.querySelector('#totalsSubtotal').textContent = rupiah(totals.subtotal);
+    host.querySelector('#totalsDiscountAmt').textContent = '-'+rupiah(totals.discountAmt);
+    host.querySelector('#totalsTaxAmt').textContent = '+'+rupiah(totals.taxAmt);
+    host.querySelector('#totalsGrand').textContent = rupiah(totals.total);
+  }
+}
+
+function renderItemCard(it){
+  const lineTotal = (Number(it.qty)||0) * (Number(it.price)||0);
+  return `
+  <div class="item-card">
+    <button class="icon-btn item-remove" data-item-remove="${it.id}">${ICONS.close}</button>
+    <select data-item-product="${it.id}">
+      <option value="">Item bebas…</option>
+      ${state.products.map(p=>`<option value="${p.id}" ${it.productId===p.id?'selected':''}>${escapeHtml(p.name)} (stok ${p.stock})</option>`).join('')}
+    </select>
+    <input type="text" data-item-name="${it.id}" placeholder="Nama item" value="${escapeAttr(it.name)}" style="margin-bottom:10px;">
+    <input type="text" data-item-lot="${it.id}" placeholder="No. Lot/Serial (opsional)" value="${escapeAttr(it.lot||'')}" style="margin-bottom:10px;">
+    <div class="qty-unit-price">
+      <input type="number" min="0" step="1" value="${it.qty}" data-item-qty="${it.id}" placeholder="Qty">
+      <input type="text" value="${escapeAttr(it.unit||'pcs')}" data-item-unit="${it.id}" placeholder="Satuan">
+      <input type="number" min="0" step="100" value="${it.price}" data-item-price="${it.id}" placeholder="Harga">
+    </div>
+    <div class="line-total" data-line-total="${it.id}">${rupiah(lineTotal)}</div>
+  </div>`;
+}
+
+async function saveInvoiceDraft(){
+  const d = state.draftInvoice;
+  if(!d.contactId){ alert('Pilih klien/supplier terlebih dahulu.'); return; }
+  const validItems = d.items.filter(it=> (it.name || it.productId) && Number(it.qty) > 0);
+  if(!validItems.length){ alert('Tambahkan minimal satu item dengan qty > 0.'); return; }
+  const totals = calcInvoiceTotals(validItems, d.taxPct, d.discountPct);
+  const contact = state.contacts.find(c=>c.id===d.contactId);
+  const invoice = {
+    id: uid(), number: nextInvoiceNumber(d.type), type: d.type, contactId: d.contactId,
+    contactName: contact ? contact.name : '', date: d.date, needDate: d.needDate || '', notes: (d.notes||'').trim(),
+    creditTerms: (d.creditTerms||'').trim(), costCenter: (d.costCenter||'').trim(),
+    items: validItems.map(it=>({productId:it.productId||null, name:it.name||(state.products.find(p=>p.id===it.productId)||{}).name||'Item', qty:Number(it.qty), unit:(it.unit||'pcs').trim()||'pcs', lot:(it.lot||'').trim(), price:Number(it.price)})),
+    taxPct: Number(d.taxPct)||0, discountPct: Number(d.discountPct)||0,
+    subtotal: totals.subtotal, discountAmt: totals.discountAmt, taxAmt: totals.taxAmt, total: totals.total,
+    status: 'unpaid', stockApplied: false, createdAt: new Date().toISOString()
+  };
+  state.invoices.push(invoice);
+  await persist(['invoices','settings']);
+  closeInvoiceModal();
+  showToast(`${invoice.number} tersimpan`);
+  state.tab = 'invoices'; render();
+}
+
+/* ============================= CONTACT MODAL ============================= */
+function openContactModal(id){ state.editingContactId = id || null; state.contactModalOpen = true; render(); }
+function closeContactModal(){
+  state.contactModalOpen = false; state.editingContactId = null;
+  document.querySelectorAll('#contactOverlay').forEach(el=>el.remove());
+  render();
+}
+
+function mountContactModal(){
+  document.querySelectorAll('#contactOverlay').forEach(el=>el.remove());
+  const editing = state.editingContactId ? state.contacts.find(c=>c.id===state.editingContactId) : null;
+  const host = document.createElement('div'); host.className = 'overlay'; host.id = 'contactOverlay';
+  host.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h3>${editing ? 'Edit klien' : 'Tambah klien'}</h3><button class="sheet-close" id="cClose">${ICONS.close}</button></div>
+      <div class="sheet-body">
+        <form id="contactForm">
+          <div class="field"><label>Nama klien</label><input name="name" placeholder="Nama klien" required value="${escapeAttr(editing?.name||'')}"></div>
+          <div class="field"><label>Attention / PIC (opsional)</label><input name="picName" placeholder="cth. Admin, Budi" value="${escapeAttr(editing?.picName||'')}"></div>
+          <div class="field"><label>Nomor WhatsApp</label><input name="phone" placeholder="Nomor WhatsApp" value="${escapeAttr(editing?.phone||'')}"></div>
+          <div class="field"><label>Email</label><input name="email" placeholder="Email" value="${escapeAttr(editing?.email||'')}"></div>
+          <div class="field"><label>Alamat</label><input name="address" placeholder="Alamat" value="${escapeAttr(editing?.address||'')}"></div>
+        </form>
+      </div>
+      <div class="sheet-foot">
+        <button class="btn-pill" id="cSave">Simpan Klien</button>
+        ${editing?'<button class="btn-pill outline" id="cDelete" style="margin-top:10px;">Hapus Klien</button>':''}
+      </div>
+    </div>`;
+  document.body.appendChild(host);
+  host.querySelector('#cClose').onclick = closeContactModal;
+  host.addEventListener('mousedown', e=>{ if(e.target===host) closeContactModal(); });
+  if(editing){
+    host.querySelector('#cDelete').onclick = async ()=>{
+      if(confirm('Hapus kontak ini?')){ state.contacts = state.contacts.filter(c=>c.id!==editing.id); await persist(['contacts']); closeContactModal(); showToast('Kontak dihapus'); }
+    };
+  }
+  host.querySelector('#cSave').onclick = async ()=>{
+    const f = new FormData(host.querySelector('#contactForm'));
+    const name = (f.get('name')||'').trim();
+    if(!name){ alert('Nama wajib diisi.'); return; }
+    if(editing){ editing.name=name; editing.picName=f.get('picName'); editing.phone=f.get('phone'); editing.email=f.get('email'); editing.address=f.get('address'); }
+    else { state.contacts.push({id:uid(), name, picName:f.get('picName'), phone:f.get('phone'), email:f.get('email'), address:f.get('address')}); }
+    await persist(['contacts']); closeContactModal(); showToast('Kontak tersimpan');
+  };
+}
+
+/* ============================= PRODUCT MODAL ============================= */
+function openProductModal(id){ state.editingProductId = id || null; state.productModalOpen = true; render(); }
+function closeProductModal(){
+  state.productModalOpen = false; state.editingProductId = null;
+  document.querySelectorAll('#productOverlay').forEach(el=>el.remove());
+  render();
+}
+
+function mountProductModal(){
+  document.querySelectorAll('#productOverlay').forEach(el=>el.remove());
+  const editing = state.editingProductId ? state.products.find(p=>p.id===state.editingProductId) : null;
+  const host = document.createElement('div'); host.className = 'overlay'; host.id = 'productOverlay';
+  host.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h3>${editing ? 'Edit produk' : 'Produk baru'}</h3><button class="sheet-close" id="pClose">${ICONS.close}</button></div>
+      <div class="sheet-body">
+        <form id="productForm">
+          <div class="field"><label>Nama produk</label><input name="name" required value="${escapeAttr(editing?.name||'')}"></div>
+          <div class="field"><label>SKU</label><input name="sku" value="${escapeAttr(editing?.sku||'')}"></div>
+          <div class="field"><label>Harga jual</label><input type="number" name="price" min="0" step="100" value="${editing?.price??0}"></div>
+          <div class="field"><label>Stok awal</label><input type="number" name="stock" min="0" step="1" value="${editing?.stock??0}" ${editing?'disabled':''}></div>
+          ${editing?'<div class="section-sub">Stok hanya berubah otomatis lewat invoice.</div>':''}
+        </form>
+      </div>
+      <div class="sheet-foot">
+        <button class="btn-pill" id="pSave">Simpan Produk</button>
+        ${editing?'<button class="btn-pill outline" id="pDelete" style="margin-top:10px;">Hapus Produk</button>':''}
+      </div>
+    </div>`;
+  document.body.appendChild(host);
+  host.querySelector('#pClose').onclick = closeProductModal;
+  host.addEventListener('mousedown', e=>{ if(e.target===host) closeProductModal(); });
+  if(editing){
+    host.querySelector('#pDelete').onclick = async ()=>{
+      if(confirm('Hapus produk ini?')){ state.products = state.products.filter(p=>p.id!==editing.id); await persist(['products']); closeProductModal(); showToast('Produk dihapus'); }
+    };
+  }
+  host.querySelector('#pSave').onclick = async ()=>{
+    const f = new FormData(host.querySelector('#productForm'));
+    const name = (f.get('name')||'').trim();
+    if(!name){ alert('Nama produk wajib diisi.'); return; }
+    if(editing){ editing.name=name; editing.sku=f.get('sku'); editing.price=Number(f.get('price'))||0; }
+    else { state.products.push({id:uid(), name, sku:f.get('sku'), price:Number(f.get('price'))||0, stock:Number(f.get('stock'))||0}); }
+    await persist(['products']); closeProductModal(); showToast('Produk tersimpan');
+  };
+}
+
+/* ============================= PDF EXPORT ============================= */
+function dataUrlFormat(url){ if(url && url.startsWith('data:image/png')) return 'PNG'; return 'JPEG'; }
+function rupiahPlain(n){ return 'Rp ' + (Number(n)||0).toLocaleString('id-ID', {maximumFractionDigits:0}); }
+
+function terbilang(n){
+  n = Math.round(Math.abs(Number(n)||0));
+  if(n === 0) return 'Nol';
+  const angka = ['','Satu','Dua','Tiga','Empat','Lima','Enam','Tujuh','Delapan','Sembilan','Sepuluh','Sebelas'];
+  function convert(x){
+    if(x < 12) return angka[x];
+    if(x < 20) return convert(x-10) + ' Belas';
+    if(x < 100) return convert(Math.floor(x/10)) + ' Puluh' + (x%10!==0 ? ' '+convert(x%10) : '');
+    if(x < 200) return 'Seratus' + (x-100!==0 ? ' '+convert(x-100) : '');
+    if(x < 1000) return convert(Math.floor(x/100)) + ' Ratus' + (x%100!==0 ? ' '+convert(x%100) : '');
+    if(x < 2000) return 'Seribu' + (x-1000!==0 ? ' '+convert(x-1000) : '');
+    if(x < 1000000) return convert(Math.floor(x/1000)) + ' Ribu' + (x%1000!==0 ? ' '+convert(x%1000) : '');
+    if(x < 1000000000) return convert(Math.floor(x/1000000)) + ' Juta' + (x%1000000!==0 ? ' '+convert(x%1000000) : '');
+    if(x < 1000000000000) return convert(Math.floor(x/1000000000)) + ' Miliar' + (x%1000000000!==0 ? ' '+convert(x%1000000000) : '');
+    return convert(Math.floor(x/1000000000000)) + ' Triliun' + (x%1000000000000!==0 ? ' '+convert(x%1000000000000) : '');
+  }
+  return convert(n).replace(/\s+/g,' ').trim();
+}
+
+function buildInvoicePdf(inv){
+  if(!window.jspdf) return null;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const s = state.settings;
+  const marginX = 48;
+  const rightX = 547;
+  const pageW = rightX - marginX;
+  const ink = [24,30,24], muted = [120,113,99], accent = [194,74,44], line = [205,196,177];
+  const isPO = inv.type === 'purchase';
+  const docLabel = isPO ? 'PURCHASE ORDER' : 'INVOICE';
+  const refLabel = isPO ? 'PO' : 'Invoice';
+  const contact = state.contacts.find(c=>c.id===inv.contactId);
+
+  /* ---------- Kop: logo + nama usaha (kiri) & judul dokumen + info grid (kanan) ---------- */
+  let y = 40;
+  let textX = marginX;
+  let headerNameY = y+12;
+  if(s.logoDataUrl){
+    try{
+      const logoH = 56;
+      const aspect = Number(s.logoAspect) > 0 ? Number(s.logoAspect) : 1;
+      const logoW = Math.min(logoH * aspect, 110);
+      doc.addImage(s.logoDataUrl, dataUrlFormat(s.logoDataUrl), marginX, y-6, logoW, logoH);
+      textX = marginX + logoW + 14;
+      headerNameY = y+20;
+    }catch(e){}
+  }
+  const infoGridLabelX = rightX-172;
+  const leftBlockMaxWidth = Math.max(110, infoGridLabelX - textX - 14);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...ink);
+  doc.text(s.companyName || 'Usaha Anda', textX, headerNameY, {maxWidth: leftBlockMaxWidth});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...muted);
+  let leftY = headerNameY + 13;
+  if(s.companyAddress){ doc.text(s.companyAddress, textX, leftY, {maxWidth: leftBlockMaxWidth}); leftY += 11; }
+  const contactLine = [s.companyPhone, s.npwp ? 'NPWP: '+s.npwp : ''].filter(Boolean).join('   ·   ');
+  if(contactLine){ doc.text(contactLine, textX, leftY, {maxWidth: leftBlockMaxWidth}); leftY += 11; }
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(...ink);
+  doc.text(docLabel, rightX, y+8, {align:'right'});
+  const infoRows = [
+    [refLabel + ' Number', inv.number],
+    [refLabel + ' Date', fmtDate(inv.date)],
+    ...(inv.needDate ? [['Need Date', fmtDate(inv.needDate)]] : []),
+    ['Print Date', fmtDate(new Date())],
+    ['Type', inv.status==='paid' ? 'Tunai' : 'Kredit'],
+    ['Page', '1/1'],
+  ];
+  let ry = y + 24;
+  doc.setFontSize(8);
+  infoRows.forEach(([label, val])=>{
+    doc.setFont('helvetica','normal'); doc.setTextColor(...muted);
+    doc.text(label, rightX-172, ry);
+    doc.text(':', rightX-92, ry);
+    doc.setFont('helvetica','bold'); doc.setTextColor(...ink);
+    doc.text(String(val), rightX, ry, {align:'right'});
+    ry += 12.5;
+  });
+
+  y = Math.max(leftY, ry) + 10;
+  doc.setDrawColor(...ink); doc.setLineWidth(1.4);
+  doc.line(marginX, y, rightX, y);
+  doc.setLineWidth(0.5);
+  doc.line(marginX, y+2.5, rightX, y+2.5);
+  y += 24;
+
+  /* ---------- Dua kolom: Supplier/Dari (kiri) & Bill To/Kepada (kanan) ---------- */
+  const colLeftX = marginX, colRightX = marginX + 270;
+  function partyBlock(x, label, name, phone, address, attention){
+    let py = y;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text(label, x, py); py += 14;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...ink);
+    doc.text(name || '-', x, py); py += 13;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...muted);
+    if(attention){ doc.text('Attention : ' + attention, x, py); py += 11; }
+    if(phone){ doc.text(phone, x, py); py += 11; }
+    if(address){ doc.text(address, x, py, {maxWidth: 230}); py += 11; }
+    return py;
+  }
+  let bottomLeft, bottomRight;
+  if(isPO){
+    bottomLeft = partyBlock(colLeftX, 'SUPPLIER :', inv.contactName, contact?.phone, contact?.address, contact?.picName);
+    bottomRight = partyBlock(colRightX, 'BILL TO :', s.companyName, s.companyPhone, s.companyAddress);
+  } else {
+    bottomLeft = partyBlock(colLeftX, 'DARI :', s.companyName, s.companyPhone, s.companyAddress);
+    bottomRight = partyBlock(colRightX, 'KEPADA YTH :', inv.contactName, contact?.phone, contact?.address, contact?.picName);
+  }
+  y = Math.max(bottomLeft, bottomRight) + 8;
+
+  // Status pill (Lunas / Diterima / Belum Lunas) — baris sendiri, rata kanan, di atas Credit Terms/Remarks
+  const stampText = inv.status==='paid' ? (isPO?'DITERIMA':'LUNAS') : 'BELUM LUNAS';
+  doc.setDrawColor(...accent); doc.setTextColor(...accent); doc.setLineWidth(1.1);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  const stampW = doc.getTextWidth(stampText) + 16;
+  doc.roundedRect(rightX-stampW, y, stampW, 17, 3, 3);
+  doc.text(stampText, rightX-8, y+11.5, {align:'right'});
+  y += 25;
+
+  /* ---------- Credit Terms (kiri) & Remarks (kanan) ---------- */
+  let creditLines = 0, notesLines = 0;
+  if(inv.creditTerms){
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('CREDIT TERMS :', colLeftX, y+11);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...ink);
+    const wrapped = doc.splitTextToSize(String(inv.creditTerms), 180);
+    doc.text(wrapped, colLeftX+78, y+11);
+    creditLines = wrapped.length;
+  }
+  if(inv.notes){
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('REMARKS :', colRightX, y+11);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...ink);
+    const wrapped = doc.splitTextToSize(String(inv.notes), 150);
+    doc.text(wrapped, colRightX+56, y+11);
+    notesLines = wrapped.length;
+  }
+  const maxLines = Math.max(creditLines, notesLines);
+  y += maxLines > 0 ? (12 + maxLines*11) : 14;
+
+  /* ---------- Tabel item: No | Deskripsi | Lot/Serial | Qty | Satuan | Harga | Subtotal ---------- */
+  const cNo = marginX+24, cDesc = cNo+150, cLot = cDesc+55, cQty = cLot+40, cUnit = cQty+50, cPrice = cUnit+85;
+  // 48+24=72(No) +150=222(Desc) +55=277(Lot) +40=317(Qty) +50=367(Satuan) +85=452(Harga) +95=547(Subtotal) — total 499=pageW
+  const headH = 20, rowH = 21;
+  const tableTop = y;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...ink);
+  doc.text('NO', marginX+5, y+13.5);
+  doc.text('DESKRIPSI', cNo+6, y+13.5);
+  doc.text('LOT/SERIAL', cDesc+6, y+13.5);
+  doc.text('QTY', cLot+34, y+13.5, {align:'right'});
+  doc.text('SATUAN', cQty+6, y+13.5);
+  doc.text('HARGA', cUnit+79, y+13.5, {align:'right'});
+  doc.text('SUBTOTAL', rightX-6, y+13.5, {align:'right'});
+  y += headH;
+  doc.setDrawColor(...ink); doc.setLineWidth(1);
+  doc.line(marginX, y, rightX, y);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  inv.items.forEach((it, idx)=>{
+    doc.setTextColor(...ink);
+    doc.text(String(idx+1), marginX+5, y+14.5);
+    doc.text(String(it.name), cNo+6, y+14.5, {maxWidth: 140});
+    doc.setTextColor(...muted);
+    doc.text(it.lot ? String(it.lot) : '—', cDesc+6, y+14.5, {maxWidth: 50});
+    doc.setTextColor(...ink);
+    doc.text(String(it.qty), cLot+34, y+14.5, {align:'right'});
+    doc.setTextColor(...muted);
+    doc.text(String(it.unit||'pcs'), cQty+6, y+14.5);
+    doc.setTextColor(...ink);
+    doc.text(rupiahPlain(it.price), cUnit+79, y+14.5, {align:'right'});
+    doc.text(rupiahPlain(it.qty*it.price), rightX-6, y+14.5, {align:'right'});
+    y += rowH;
+    doc.setDrawColor(...line); doc.setLineWidth(0.5);
+    doc.line(marginX, y, rightX, y);
+  });
+  const tableBottom = y;
+
+  doc.setDrawColor(...ink); doc.setLineWidth(1);
+  doc.rect(marginX, tableTop, pageW, tableBottom - tableTop);
+  doc.setDrawColor(...line); doc.setLineWidth(0.5);
+  [cNo, cDesc, cLot, cQty, cUnit, cPrice].forEach(cx=>{ doc.line(cx, tableTop, cx, tableBottom); });
+  y += 18;
+
+  /* ---------- Footer: keterangan (kiri) & total (kanan) ---------- */
+  const footStartY = y;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...muted);
+  doc.text('Mata Uang', colLeftX, y); doc.text(': IDR', colLeftX+58, y); y += 13;
+  doc.text('Status', colLeftX, y); doc.text(': ' + (inv.status==='paid' ? (isPO?'Diterima':'Lunas') : 'Belum Lunas'), colLeftX+58, y); y += 13;
+  if(inv.costCenter){ doc.text('Cost Center', colLeftX, y); doc.text(': ' + inv.costCenter, colLeftX+58, y); y += 13; }
+
+  let ty = footStartY;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...muted);
+  doc.text('Subtotal', cUnit, ty); doc.text(rupiahPlain(inv.subtotal), rightX, ty, {align:'right'}); ty += 14;
+  doc.text(`Diskon (${inv.discountPct}%)`, cUnit, ty); doc.text('-'+rupiahPlain(inv.discountAmt), rightX, ty, {align:'right'}); ty += 14;
+  doc.text(`Pajak (${inv.taxPct}%)`, cUnit, ty); doc.text('+'+rupiahPlain(inv.taxAmt), rightX, ty, {align:'right'}); ty += 6;
+  doc.setDrawColor(...ink); doc.setLineWidth(1); doc.line(cUnit, ty+7, rightX, ty+7);
+  ty += 23;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(...accent);
+  doc.text('TOTAL', cUnit, ty);
+  doc.text(rupiahPlain(inv.total), rightX, ty, {align:'right'});
+
+  y = Math.max(y, ty) + 20;
+
+  /* ---------- Terbilang ---------- */
+  doc.setDrawColor(...line); doc.setLineWidth(0.7);
+  doc.setFillColor(250,247,239);
+  doc.rect(marginX, y, pageW, 22, 'FD');
+  doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(...ink);
+  doc.text(`Terbilang: ${terbilang(inv.total)} Rupiah`, marginX+8, y+14.5, {maxWidth: pageW-16});
+  y += 22 + 22;
+
+  /* ---------- Info rekening (hanya invoice penjualan & jika diisi) ---------- */
+  if(!isPO && (s.bankName || s.bankAccountNumber)){
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...ink);
+    doc.text('Pembayaran dapat ditransfer ke:', marginX, y);
+    y += 14;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...muted);
+    if(s.bankName){ doc.text('Bank', marginX, y); doc.text(': ' + s.bankName, marginX+62, y); y += 12; }
+    if(s.bankAccountHolder){ doc.text('Atas Nama', marginX, y); doc.text(': ' + s.bankAccountHolder, marginX+62, y); y += 12; }
+    if(s.bankAccountNumber){ doc.text('No. Rekening', marginX, y); doc.text(': ' + s.bankAccountNumber, marginX+62, y); y += 12; }
+    y += 18;
+  }
+
+  /* ---------- Blok tanda tangan dua kolom ---------- */
+  const sigTop = y + 4;
+  const sigColW = 155;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...ink);
+  doc.text('Diterima oleh,', colLeftX, sigTop);
+  doc.text('Hormat kami,', colRightX, sigTop);
+
+  if(s.signatureDataUrl){
+    try{ doc.addImage(s.signatureDataUrl, dataUrlFormat(s.signatureDataUrl), colRightX, sigTop+8, 95, 42); }catch(e){}
+  }
+
+  const sigLineY = sigTop + 56;
+  doc.setDrawColor(...ink); doc.setLineWidth(0.8);
+  doc.line(colLeftX, sigLineY, colLeftX+sigColW, sigLineY);
+  doc.line(colRightX, sigLineY, colRightX+sigColW, sigLineY);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...muted);
+  doc.text('( ' + (inv.contactName||'') + ' )', colLeftX, sigLineY+12);
+  doc.setFont('helvetica','bold'); doc.setTextColor(...ink);
+  doc.text(s.companyName||'', colRightX, sigLineY+12);
+
+  y = sigLineY + 36;
+  doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(...muted);
+  doc.text('Terima kasih atas kepercayaan Anda.', marginX, y);
+
+  return doc;
+}
+
+function downloadPdf(invId){
+  const inv = state.invoices.find(i=>i.id===invId);
+  if(!inv){ return; }
+  if(!window.jspdf){ showToast('Modul PDF belum siap, coba beberapa saat lagi'); return; }
+  const doc = buildInvoicePdf(inv);
+  doc.save(`${inv.number}.pdf`);
+}
+
+function whatsappLink(phone, text){
+  let digits = (phone||'').replace(/\D/g,'');
+  if(digits.startsWith('0')) digits = '62' + digits.slice(1);
+  else if(digits && !digits.startsWith('62')) digits = '62' + digits;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+
+async function sendPdfWhatsapp(invId){
+  const inv = state.invoices.find(i=>i.id===invId);
+  if(!inv){ return; }
+  if(!window.jspdf){ showToast('Modul PDF belum siap, coba beberapa saat lagi'); return; }
+  const contact = state.contacts.find(c=>c.id===inv.contactId);
+  const statusLabel = inv.status==='paid' ? (inv.type==='purchase'?'diterima':'lunas') : 'belum lunas';
+  const text = `Halo${contact?', '+contact.name:''}, berikut invoice ${inv.number} sebesar ${rupiah(inv.total)} (${statusLabel}). Terima kasih.`;
+
+  const doc = buildInvoicePdf(inv);
+  const fileName = `${inv.number}.pdf`;
+
+  // Coba kirim file PDF asli langsung lewat share sheet (WhatsApp bisa dipilih di sana).
+  try{
+    const blob = doc.output('blob');
+    const file = new File([blob], fileName, {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:inv.number, text});
+      return;
+    }
+  }catch(e){
+    if(e && e.name === 'AbortError') return; // pengguna membatalkan share sheet
+    // lanjut ke fallback di bawah jika share gagal karena alasan lain
+  }
+
+  // Fallback: unduh PDF-nya, lalu buka chat WhatsApp dengan pesan siap kirim.
+  doc.save(fileName);
+  const waUrl = whatsappLink(contact?.phone, text + ' (PDF sudah terunduh, silakan lampirkan manual di chat ini)');
+  window.open(waUrl, '_blank');
+  showToast('PDF diunduh — lampirkan manual ke chat WhatsApp yang baru terbuka');
+}
+
+/* ============================= FILE UPLOAD HELPERS ============================= */
+function readFileAsDataUrl(file){
+  return new Promise((res, rej)=>{
+    const r = new FileReader();
+    r.onload = ()=>res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function getImageAspect(dataUrl){
+  return new Promise((res)=>{
+    const img = new Image();
+    img.onload = ()=> res(img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1);
+    img.onerror = ()=> res(1);
+    img.src = dataUrl;
+  });
+}
+
+/* ============================= EVENTS ============================= */
+function attachGlobalEvents(){
+  document.querySelectorAll('[data-nav]').forEach(btn=>{ btn.onclick = ()=>{ state.tab = btn.dataset.nav; render(); window.scrollTo(0,0); }; });
+  const syncBtn = document.getElementById('syncBtn');
+  if(syncBtn){
+    syncBtn.onclick = ()=>{
+      syncBtn.classList.add('syncing');
+      syncFromServer(true).finally(()=> syncBtn.classList.remove('syncing'));
+    };
+  }
+  document.querySelectorAll('[data-open-invoice]').forEach(btn=>{ btn.onclick = ()=> openInvoiceModal(btn.dataset.openInvoice); });
+  document.querySelectorAll('[data-inv-filter]').forEach(btn=>{ btn.onclick = ()=>{ state.invoiceFilter = btn.dataset.invFilter; render(); }; });
+  document.querySelectorAll('[data-toggle-status]').forEach(el=>{ el.onclick = ()=> toggleInvoiceStatus(el.dataset.toggleStatus); });
+  document.querySelectorAll('[data-pdf]').forEach(el=>{ el.onclick = ()=> downloadPdf(el.dataset.pdf); });
+  document.querySelectorAll('[data-wa]').forEach(el=>{ el.onclick = ()=> sendPdfWhatsapp(el.dataset.wa); });
+  document.querySelectorAll('[data-del-invoice]').forEach(el=>{ el.onclick = ()=> deleteInvoice(el.dataset.delInvoice); });
+  document.querySelectorAll('[data-open-contact]').forEach(el=>{ el.onclick = ()=> openContactModal(el.dataset.openContact || null); });
+  document.querySelectorAll('[data-del-contact]').forEach(el=>{
+    el.onclick = async ()=>{ if(confirm('Hapus kontak ini?')){ state.contacts = state.contacts.filter(c=>c.id!==el.dataset.delContact); await persist(['contacts']); render(); } };
+  });
+  document.querySelectorAll('[data-open-product]').forEach(el=>{ el.onclick = ()=> openProductModal(el.dataset.openProduct || null); });
+  document.querySelectorAll('[data-del-product]').forEach(el=>{
+    el.onclick = async ()=>{ if(confirm('Hapus produk ini?')){ state.products = state.products.filter(p=>p.id!==el.dataset.delProduct); await persist(['products']); render(); } };
+  });
+  const search = document.getElementById('productSearch');
+  if(search){
+    search.oninput = ()=>{ state.productSearch = search.value; render(); setTimeout(()=>{ const s=document.getElementById('productSearch'); if(s){ s.focus(); s.selectionStart=s.selectionEnd=s.value.length; } },0); };
+  }
+  const settingsForm = document.getElementById('settingsForm');
+  if(settingsForm){
+    settingsForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      const f = new FormData(settingsForm);
+      Object.assign(state.settings, {
+        companyName: f.get('companyName'), companyAddress: f.get('companyAddress'), companyPhone: f.get('companyPhone'),
+        companyEmail: f.get('companyEmail'), npwp: f.get('npwp'),
+        bankName: f.get('bankName'), bankAccountNumber: f.get('bankAccountNumber'), bankAccountHolder: f.get('bankAccountHolder'),
+        defaultCreditTerms: f.get('defaultCreditTerms'), defaultCostCenter: f.get('defaultCostCenter'),
+        defaultTaxPct: Number(f.get('defaultTaxPct'))||0, lowStockThreshold: Number(f.get('lowStockThreshold'))||0
+      });
+      await persist(['settings']); showToast('Profil tersimpan'); render();
+    };
+  }
+  const pickLogo = document.getElementById('pickLogo'), logoInput = document.getElementById('logoInput');
+  if(pickLogo){
+    pickLogo.onclick = ()=> logoInput.click();
+    logoInput.onchange = async ()=>{
+      const file = logoInput.files[0]; if(!file) return;
+      const dataUrl = await readFileAsDataUrl(file);
+      state.settings.logoDataUrl = dataUrl;
+      state.settings.logoAspect = await getImageAspect(dataUrl);
+      await persist(['settings']); showToast('Logo tersimpan'); render();
+    };
+  }
+  const pickSig = document.getElementById('pickSig'), sigInput = document.getElementById('sigInput');
+  if(pickSig){
+    pickSig.onclick = ()=> sigInput.click();
+    sigInput.onchange = async ()=>{
+      const file = sigInput.files[0]; if(!file) return;
+      state.settings.signatureDataUrl = await readFileAsDataUrl(file);
+      await persist(['settings']); showToast('Tanda tangan tersimpan'); render();
+    };
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
