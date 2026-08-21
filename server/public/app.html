@@ -837,6 +837,8 @@ function renderProfile(){
       <span style="color:var(--muted); font-weight:500;">Akses ke aplikasi ini dikendalikan oleh pemilik layanan. Jika akses dinonaktifkan, aplikasi akan otomatis terkunci.</span>
     </div>
   </div>
+
+  <button class="btn-pill outline" id="logoutBtn" style="margin-top:14px;">Logout</button>
   `;
 }
 
@@ -1418,6 +1420,16 @@ function getImageAspect(dataUrl){
 /* ============================= EVENTS ============================= */
 function attachGlobalEvents(){
   document.querySelectorAll('[data-nav]').forEach(btn=>{ btn.onclick = ()=>{ state.tab = btn.dataset.nav; render(); window.scrollTo(0,0); }; });
+  const logoutBtn = document.getElementById('logoutBtn');
+  if(logoutBtn){
+    logoutBtn.onclick = ()=>{
+      if(confirm('Keluar dari aplikasi? Anda perlu memasukkan license key lagi untuk masuk kembali.')){
+        clearInterval(window.__syncTimer);
+        localStorage.removeItem('licenseKey');
+        location.reload();
+      }
+    };
+  }
   const syncBtn = document.getElementById('syncBtn');
   if(syncBtn){
     syncBtn.onclick = ()=>{
@@ -1483,4 +1495,5 @@ function attachGlobalEvents(){
 boot();
 </script>
 </body>
-</html>
+  </html>
+  
