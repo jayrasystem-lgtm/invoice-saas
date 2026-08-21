@@ -1,22 +1,20 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
-  "license": "MIT",
-  "private": true,
-  "type": "module",
-  "main": "index.js",
+  "name": "invoice-saas",
+  "version": "1.0.0",
+  "description": "Aplikasi Invoice & Inventaris multi-klien dengan sistem lisensi berlangganan",
+  "main": "server/index.js",
   "scripts": {
-    "start": "node index.js",
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "start": "node server/index.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.1"
-  },
-  "devDependencies": {
-    "prettier": "^3.9.6",
-    "typescript": "~5.9.3"
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "nanoid": "^3.3.18"
   }
 }
